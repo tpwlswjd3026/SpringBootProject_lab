@@ -1,8 +1,7 @@
 package com.rookies6.myspringbootlab.entity;
 
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.LocalDate;
 
@@ -10,6 +9,7 @@ import java.time.LocalDate;
 @Table(name = "books")
 @Getter
 @Setter
+@NoArgsConstructor @AllArgsConstructor @Builder
 public class Book {
 
     @Id
@@ -27,16 +27,6 @@ public class Book {
 
     private LocalDate publishDate;
 
-    public Book() {
-
-    }
-    public Book(String title, String author, String isbn, Integer price, LocalDate publishDate){
-        this.title = title;
-        this.author = author;
-        this.isbn = isbn;
-        this.price = price;
-        this.publishDate = publishDate;
 
 
-    }
 }
