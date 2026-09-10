@@ -1,15 +1,16 @@
-package com.rookies6.myspringbootlab.repository;
-
-
 import com.rookies6.myspringbootlab.entity.Book;
-import org.junit.jupiter.api.BeforeEach;
+import com.rookies6.myspringbootlab.entity.BookDetail;
+import com.rookies6.myspringbootlab.repository.BookDetailRepository;
+import com.rookies6.myspringbootlab.repository.BookRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
-import static org.junit.jupiter.api.Assertions.*;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 @DataJpaTest
 public class BookRepositoryTest {
@@ -17,65 +18,171 @@ public class BookRepositoryTest {
     @Autowired
     private BookRepository bookRepository;
 
-    private Book book1;
-    private Book book2;
+    @Autowired
+    private BookDetailRepository bookDetailRepository;
 
-    @BeforeEach
-    void setUp() {
-        book1 = new Book("스프링 부트 입문", "홍길동", "9788956746425", 30000,
-                LocalDate.of(2025, 5, 7) );
-        book2 = new Book("JPA 프로그래밍", "박둘리", "9788956746432", 35000,
-                LocalDate.of(2025, 4, 30) );
+    @Test
+    public void createBookWithBookDetail() {
+        // Given
+        Book book = Book.builder()
+                .title("Clean Code")
+                .author("Robert C. Martin")
+                .isbn("9780132350884")
+                .price(45)
+                .publishDate(LocalDate.of(2008, 8, 1))
+                .build();
+
+        BookDetail bookDetail = BookDetail.builder()
+                .description("A handbook of agile software craftsmanship")
+                .language("English")
+                .pageCount(464)
+                .publisher("Prentice Hall")
+                .coverImageUrl("https://example.com/cleancode.jpg")
+                .edition("1st")
+                .book(book)
+                .build();
+
+        book.setBookDetail(bookDetail);
+
+        // When
+        Book savedBook = bookRepository.save(book);
+
+        // Then
+        assertThat(savedBook).isNotNull();
+        assertThat(savedBook.getId()).isNotNull();
+        assertThat(savedBook.getTitle()).isEqualTo("Clean Code");
+        assertThat(savedBook.getIsbn()).isEqualTo("9780132350884");
+        assertThat(savedBook.getBookDetail()).isNotNull();
+        assertThat(savedBook.getBookDetail().getPublisher()).isEqualTo("Prentice Hall");
+        assertThat(savedBook.getBookDetail().getPageCount()).isEqualTo(464);
     }
 
     @Test
-    void testCreateBook(){
-        Book savedBook = bookRepository.save(book1);
-        assertNotNull(savedBook.getId());
-        assertEquals("스프링 부트 입문", savedBook.getTitle());
+    public void findBookByIsbn() {
+        // Given
+        Book book = Book.builder()
+                .title("Clean Code")
+                .author("Robert C. Martin")
+                .isbn("9780132350884")
+                .price(45)
+                .publishDate(LocalDate.of(2008, 8, 1))
+                .build();
 
+        BookDetail bookDetail = BookDetail.builder()
+                .description("A handbook of agile software craftsmanship")
+                .language("English")
+                .pageCount(464)
+                .publisher("Prentice Hall")
+                .coverImageUrl("https://example.com/cleancode.jpg")
+                .edition("1st")
+                .book(book)
+                .build();
+
+        book.setBookDetail(bookDetail);
+        bookRepository.save(book);
+
+        // When
+        Optional<Book> foundBook = bookRepository.findByIsbn("9780132350884");
+
+        // Then
+        assertThat(foundBook).isPresent();
+        assertThat(foundBook.get().getTitle()).isEqualTo("Clean Code");
     }
 
     @Test
-    void testFindByIsbn(){
-        bookRepository.save(book1);
-        Optional<Book> foundBook = bookRepository.findByIsbn("9788956746425");
-        assertTrue(foundBook.isPresent());
-        assertEquals("스프링 부트 입문", foundBook.get().getTitle());
+    public void findByIdWithBookDetail() {
+        // Given
+        Book book = Book.builder()
+                .title("Clean Code")
+                .author("Robert C. Martin")
+                .isbn("9780132350884")
+                .price(45)
+                .publishDate(LocalDate.of(2008, 8, 1))
+                .build();
+
+        BookDetail bookDetail = BookDetail.builder()
+                .description("A handbook of agile software craftsmanship")
+                .language("English")
+                .pageCount(464)
+                .publisher("Prentice Hall")
+                .coverImageUrl("https://example.com/cleancode.jpg")
+                .edition("1st")
+                .book(book)
+                .build();
+
+        book.setBookDetail(bookDetail);
+        Book savedBook = bookRepository.save(book);
+
+        // When
+        Optional<Book> foundBook = bookRepository.findByIdWithBookDetail(savedBook.getId());
+
+        // Then
+        assertThat(foundBook).isPresent();
+        assertThat(foundBook.get().getBookDetail()).isNotNull();
+        assertThat(foundBook.get().getBookDetail().getPublisher()).isEqualTo("Prentice Hall");
     }
 
     @Test
-    void testFindByAuthor(){
-        bookRepository.save(book1);
-        bookRepository.save(book2);
-        List<Book> foundAuthor = bookRepository.findByAuthor("홍길동");
+    public void findBooksByAuthor() {
+        // Given
+        Book book1 = Book.builder()
+                .title("Clean Code")
+                .author("Robert C. Martin")
+                .isbn("9780132350884")
+                .build();
 
-        assertEquals(1, foundAuthor.size());
-        assertEquals("스프링 부트 입문", foundAuthor.get(0).getTitle());
+        Book book2 = Book.builder()
+                .title("Clean Architecture")
+                .author("Robert C. Martin")
+                .isbn("9780134494166")
+                .build();
 
+        Book book3 = Book.builder()
+                .title("Effective Java")
+                .author("Joshua Bloch")
+                .isbn("9780134685991")
+                .build();
 
+        bookRepository.saveAll(List.of(book1, book2, book3));
+
+        // When
+        List<Book> martinBooks = bookRepository.findByAuthorContainingIgnoreCase("martin");
+
+        // Then
+        assertThat(martinBooks).hasSize(2);
+        assertThat(martinBooks).extracting(Book::getTitle)
+                .containsExactlyInAnyOrder("Clean Code", "Clean Architecture");
     }
 
     @Test
-    void testUpdateBook(){
-        Book updatedBook = bookRepository.save(book1);
+    public void findBookDetailByBookId() {
+        // Given
+        Book book = Book.builder()
+                .title("Clean Code")
+                .author("Robert C. Martin")
+                .isbn("9780132350884")
+                .price(45)
+                .publishDate(LocalDate.of(2008, 8, 1))
+                .build();
 
-        updatedBook.setPrice(50000);
-        bookRepository.save(updatedBook);
+        BookDetail bookDetail = BookDetail.builder()
+                .description("A handbook of agile software craftsmanship")
+                .language("English")
+                .pageCount(464)
+                .publisher("Prentice Hall")
+                .coverImageUrl("https://example.com/cleancode.jpg")
+                .edition("1st")
+                .book(book)
+                .build();
 
-        Optional<Book> result = bookRepository.findById(updatedBook.getId());
-        assertEquals(50000, result.get().getPrice());
+        book.setBookDetail(bookDetail);
+        Book savedBook = bookRepository.save(book);
 
-    }
+        // When
+        Optional<BookDetail> foundBookDetail = bookDetailRepository.findByBookId(savedBook.getId());
 
-    @Test
-    void testDeleteBook(){
-        Book deletedBook = bookRepository.save(book1);
-
-        bookRepository.deleteById(deletedBook.getId());
-
-        Optional<Book> result = bookRepository.findById(deletedBook.getId());
-        assertTrue(result.isEmpty());
-
+        // Then
+        assertThat(foundBookDetail).isPresent();
+        assertThat(foundBookDetail.get().getDescription()).contains("agile software craftsmanship");
     }
 }
